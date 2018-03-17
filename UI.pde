@@ -111,7 +111,7 @@ class MoveablePoint{
     holdingY = false;
     holdingZ = false;
   }
-  public void mouseDragged(PeasyCam cam) {
+  public void mouseDragged() {
     if (holding) {
       if (holdingX) {
         v = PVector.add(vOrig, new PVector(mouseX - grabX, 0, 0));

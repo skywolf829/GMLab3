@@ -2,6 +2,8 @@ import peasy.*;
 import peasy.org.apache.commons.math.*;
 import peasy.org.apache.commons.math.geometry.*;
 
+import java.io.*;
+import java.util.*;
 PeasyCam cam;
 
 final int numApproxPoints = 100;
@@ -98,7 +100,7 @@ void mouseDragged() {
   for (int i = 0; i < points.size(); i++) {
     for (int j = 0; j < points.get(i).size(); j++) {
       PVector oldv = points.get(i).get(j).v;
-      points.get(i).get(j).mouseDragged(cam);
+      points.get(i).get(j).mouseDragged();
       if (oldv != points.get(i).get(j).v) changed = true;
     }
   }
@@ -208,19 +210,28 @@ void CheckPointsClicked() {
 
 void CheckGo() {
   if (goButton.contains(mouseX, mouseY)) {
-    mesh = BezierSurface(toPVectors(points), 100);
-    mesh.GenerateASCIIFile();
+
     if (operations.selectedIndex == 0) {
+      //mesh = BezierSurface(toVertices(points), Integer.parseInt(uvResolution.text));
+            mesh = createFromFile(sketchPath("") + "cone.off", 100);
+
+      mesh.GenerateASCIIFile();
     } else if (operations.selectedIndex == 1) {
+      mesh = createFromFile(sketchPath("") + "dragon.off", 100);
     } else if (operations.selectedIndex == 2) {
     }
   }
 }
 void CheckReset() {
+  
   if (reset.contains(mouseX, mouseY)) {
+    mesh = dooSabin(mesh);
+    mesh.GenerateASCIIFile();
+    /*
     cam.reset();
     cam.setActive(false);
     mesh = null;
+    */
   }
 }
 void keyPressed() {
@@ -234,25 +245,25 @@ void keyPressed() {
         points.get(i).get(j).keyPressed();
       }
     }
-    uvResolution.mousePressed();
+    uvResolution.keyPressed();
     if (operations.selectedIndex == 0) {
     } else if (operations.selectedIndex == 1) {
     }
   }
 }
-ArrayList<PVector> toPVector(ArrayList<MoveablePoint> p) {
-  ArrayList<PVector> l = new ArrayList<PVector>();
+ArrayList<Vertex> toVertex(ArrayList<MoveablePoint> p) {
+  ArrayList<Vertex> l = new ArrayList<Vertex>();
   for (int i = 0; i < p.size(); i++) {
-    l.add(p.get(i).v);
+    l.add(new Vertex(p.get(i).v));
   }
   return l;
 }
-ArrayList<ArrayList<PVector>> toPVectors(ArrayList<ArrayList<MoveablePoint>> points) {
-  ArrayList<ArrayList<PVector>> p = new ArrayList<ArrayList<PVector>>();
+ArrayList<ArrayList<Vertex>> toVertices(ArrayList<ArrayList<MoveablePoint>> points) {
+  ArrayList<ArrayList<Vertex>> p = new ArrayList<ArrayList<Vertex>>();
   for (int i = 0; i < points.size(); i++) {
-    p.add(new ArrayList<PVector>());
+    p.add(new ArrayList<Vertex>());
     for (int j = 0; j < points.get(i).size(); j++) {
-      p.get(i).add(points.get(i).get(j).v);
+      p.get(i).add(new Vertex(points.get(i).get(j).v));
     }
   } 
   return p;

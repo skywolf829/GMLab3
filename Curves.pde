@@ -173,23 +173,23 @@ class BSpline extends Curve {
     }
   }
 }
-public Mesh BezierSurface(ArrayList<ArrayList<PVector>> points, int resolution) {
-  ArrayList<PVector> vertices = new ArrayList<PVector>();
+public Mesh BezierSurface(ArrayList<ArrayList<Vertex>> points, int resolution) {
+  ArrayList<Vertex> vertices = new ArrayList<Vertex>();
+  
   ArrayList<ArrayList<Integer>> ASCIIfaces = new ArrayList<ArrayList<Integer>>();
 
-  for (float i = 0; i <= 1; i+= 1 / (float)resolution) {
-    for (float j = 0; j <= 1; j+= 1/ (float)resolution) {
+  for (float i = 0; i <= 1; i+= 1.0 / resolution) {
+    for (float j = 0; j <= 1; j+= 1.0/ resolution) {
       PVector v = new PVector();
       for (int k = 0; k < points.size(); k++) {
         for (int l = 0; l < points.get(k).size(); l++) {
-          v.add(PVector.mult(points.get(k).get(l), 
+          v.add(PVector.mult(points.get(k).get(l).position, 
             (float)(bernstein(k, points.size(), i) * bernstein(l, points.get(k).size(), j))));
         }
       }
-      vertices.add(v);
+      vertices.add(new Vertex(v));
     }
   }
-  
   for (int i = 0; i < resolution; i++) {
     for (int j = 0; j < resolution; j++) {    
       int base = (int)(i * (resolution+1));

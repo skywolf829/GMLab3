@@ -1,68 +1,136 @@
+class Vertex {
+  public PVector position;
+  public ArrayList<Edge> connectedEdges = new ArrayList<Edge>();
+  public ArrayList<Face> adjacentFaces = new ArrayList<Face>();
+
+  public Vertex() {
+  }
+  public Vertex(float x, float y, float z) {
+    position = new PVector(x, y, z);
+  }
+  public Vertex(PVector p) {
+    position = p;
+  }
+  public Vertex clone() {
+    Vertex v = new Vertex(new PVector(position.x, position.y, position.z));
+    return v;
+  }
+  public void removeEdgesNotIn(Face f) {
+    for (int i = 0; i < connectedEdges.size(); i++) {
+      if (f.hasEdge(connectedEdges.get(i)) == null) {
+        connectedEdges.remove(connectedEdges.get(i));
+        i--;
+      }
+    }
+  }
+  @Override
+    public boolean equals(Object o) {
+    return position.equals(((Vertex)o).position);
+  }
+}
 class Edge {
   public boolean orientation;
-  public PVector p1, p2;
+  public Vertex p1, p2;
   public ArrayList<Face> incidentFaces = new ArrayList<Face>();
   public Edge() {
   }
-  public Edge(PVector p1, PVector p2, boolean o) {
+  public Edge(Vertex p1, Vertex p2, boolean o) {
     this.p1 = p1;
     this.p2 = p2;
     this.orientation = o;
   }
-  public boolean equals(Edge e) {
-    boolean same = true;
-    if ((this.p1 == e.p1 && this.p2 == e.p2 && this.orientation == e.orientation)
-      || (this.p1 == e.p2 && this.p2 == e.p1 && this.orientation != e.orientation)) {
-      same = true;
-    } else {
-      same = false;
-    }
-    return same;
+  @Override
+    public boolean equals(Object e) {    
+    return (p1.equals(((Edge)e).p1) && p2.equals(((Edge)e).p2)) || 
+      (p1.equals(((Edge)e).p2) && p2.equals(((Edge)e).p1));
+  }
+  @Override
+    public String toString() {
+    return "Edge: " + p1.position + " to " + p2.position;
+  }
+  public PVector center() {
+    return PVector.mult(PVector.add(p1.position, p2.position), 0.5);
+  }
+  public boolean has(Vertex v) {
+    return v.equals(p1) || v.equals(p2);
+  }
+  public Vertex other(Vertex v) {
+    if (v.equals(p1)) return p2;
+    if (v.equals(p2)) return p1;
+    else return null;
   }
 }
 class Face {
-  public ArrayList<PVector> vertices = new ArrayList<PVector>();
+  public ArrayList<Vertex> vertices = new ArrayList<Vertex>();
   public ArrayList<Edge> edges = new ArrayList<Edge>();
   public Face() {
   }
-  public Face(ArrayList<PVector> vertices) {
+  public Face(ArrayList<Vertex> vertices) {
     this.vertices = vertices;
   }
-  public Edge hasEdge(Edge e) {
-    boolean yes = false;
-    Edge theEdge = null;
-    for (int i = 0; i < edges.size() && !yes; i++) {
-      yes = e.equals(edges.get(i));
-      if (yes) theEdge = edges.get(i);
+  public Face clone() {
+    Face f = new Face();
+    ArrayList<Vertex> newVerts = new ArrayList<Vertex>();
+    ArrayList<Edge> newEdges = new ArrayList<Edge>();
+    for (int i = 0; i < vertices.size(); i++) {
+      newVerts.add(vertices.get(i).clone());
     }
-    return theEdge;
+    for (int i = 0; i < edges.size(); i++) {
+      Edge e = new Edge(newVerts.get(vertices.indexOf(edges.get(i).p1)), 
+        newVerts.get(vertices.indexOf(edges.get(i).p2)), false);
+      newEdges.add(e);
+      newVerts.get(vertices.indexOf(edges.get(i).p1)).connectedEdges.add(e);
+      newVerts.get(vertices.indexOf(edges.get(i).p2)).connectedEdges.add(e);
+    }
+    f.vertices = newVerts;
+    f.edges = newEdges;
+    return f;
   }
-  public boolean equals(Face f) {
-    boolean same = true;
-    //See if sizes are same
-    if (f.vertices.size() == this.vertices.size() &&
-      f.edges.size() == this.edges.size()) {
-      //See if edges are same
-      for (int i = 0; i < edges.size() && same; i++) {
-        boolean found = false;
-        for (int j = 0; j < f.edges.size() && !found; j++) {
-          same = edges.get(i).equals(f.edges.get(j));
-        }
-        same = found;
+  public boolean sharesEdgeWith(Face f) {
+    for (int i = 0; i < edges.size(); i++) {
+      for (int j = 0; j < f.edges.size(); j++) {
+        if (edges.get(i).equals(f.edges.get(j))) return true;
       }
-      //See if vertices are same
-      for (int i = 0; i < vertices.size() && same; i++) {
-        boolean found = false;
-        for (int j = 0; j < f.vertices.size() && !found; j++) {
-          same = vertices.get(i).equals(f.vertices.get(j));
-        }
-        same = found;
-      }
-    } else {
-      same = false;
     }
-
-    return same;
+    return false;
+  }
+  public PVector center() {
+    PVector c = new PVector();
+    for (Vertex v : vertices) {
+      c.add(v.position);
+    }
+    c.mult(1.0 / vertices.size());
+    return c;
+  }
+  public Edge hasEdge(Edge e) {
+    for (int i = 0; i < edges.size(); i++) {
+      if (e.equals(edges.get(i))) return edges.get(i);
+    }
+    return null;
+  }
+  public ArrayList<Edge> edgesIncidentOn(Vertex v) {
+    ArrayList<Edge> e = new ArrayList<Edge>();
+    for (Edge edge : edges) {
+      if (edge.has(v) && !e.contains(edge)) e.add(edge);
+    }
+    return e;
+  }
+  public Vertex getNextPoint(Vertex v1, Vertex v2) {
+    Edge e = new Edge(v1, v2, false);
+    e = hasEdge(e);
+    Edge next = null;
+    for (int i = 0; i < edges.size(); i++) {
+      if (!edges.get(i).equals(e))
+        if (edges.get(i).has(v2)) {
+          next = edges.get(i); 
+          break;
+        }
+    }
+    if (next == null) return null;
+    else {
+      Vertex other = next.other(v2);
+      return other;
+    }
   }
 }
 
@@ -203,8 +271,6 @@ public class Quaternion {
   // Makes quaternion from axis
   public Quaternion fromAxis(float Angle, float x, float y, float z) { 
     float omega, s, c;
-    int i;
-
     s = sqrt(x*x + y*y + z*z);
 
     if (abs(s) > Float.MIN_VALUE)
@@ -240,7 +306,6 @@ public class Quaternion {
   public void slerp(Quaternion a, Quaternion b, float t)
   {
     float omega, cosom, sinom, sclp, sclq;
-    int i;
 
 
     cosom = a.X*b.X + a.Y*b.Y + a.Z*b.Z + a.W*b.W;
@@ -354,14 +419,13 @@ PVector createRaycast(PeasyCam cam) {
   PVector view = PVector.sub(cameraLookAt, cameraPosition);
   view.normalize();
 
-  
+
   Quaternion rot2 = new Quaternion();
   rot2.toQuaternion((float)cam.getRotations()[1], 
     (float)cam.getRotations()[0], (float)cam.getRotations()[2]);
-  PVector cameraUp2 = rot2.vectorMult(new PVector(0, 1, 0));
-  
+
   Vector3D up = cam.rotation.applyTo(new Vector3D(0, 1, 0));
- 
+
   PVector cameraUp = new PVector((float)up.getX(), (float)up.getY(), (float)up.getZ());
   //print(cameraUp + " " + cameraUp2 + " " );
   cameraUp.normalize();
