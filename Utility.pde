@@ -4,6 +4,7 @@ class Vertex {
   public ArrayList<Face> adjacentFaces = new ArrayList<Face>();
 
   public Vertex() {
+    position = new PVector();
   }
   public Vertex(float x, float y, float z) {
     position = new PVector(x, y, z);
@@ -131,6 +132,14 @@ class Face {
       Vertex other = next.other(v2);
       return other;
     }
+  }
+  public PVector centroid(){
+    PVector ans = new PVector();
+    for(int i = 0; i < vertices.size(); i++){
+      ans.add(vertices.get(i).position);
+    }
+    ans.mult(1.0 / vertices.size());
+    return ans;
   }
 }
 

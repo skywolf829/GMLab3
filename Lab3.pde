@@ -17,6 +17,8 @@ double[] currentCurveArgs;
 Rectangle goButton;
 Rectangle reset;
 Rectangle addRow, removeRow, addCol, removeCol;
+Rectangle loadCube, loadCone, loadLastSurface, loadSphere, loadTetrahedron;
+Rectangle catmullClark, loop, dooSabin;
 
 RadioButtons operations;
 RadioButtons curveType;
@@ -25,7 +27,6 @@ TextInput uvResolution;
 
 CheckBox close1, close2;
 
-//MoveablePoint p = new MoveablePoint(0, 0, 0);
 boolean adjustingPoint = false;
 boolean holding = false;
 int lastPointSelected = 0;
@@ -33,9 +34,13 @@ int lastPointSelected = 0;
 ArrayList<ArrayList<MoveablePoint>> points = new ArrayList<ArrayList<MoveablePoint>>();
 
 void start() {
-  operations = new RadioButtons(new String[] {"Generate surface", "Subdivice surface"}, 
+  operations = new RadioButtons(new String[] {"Generate surface", "Load .OFF"}, 
     width - 210, 20, 20, 10);
-  reset = new Rectangle(width - 110, 20, 100, 30);
+  reset = new Rectangle(width - 110, 20, 100, 30);  
+  catmullClark = new Rectangle(width - 210, 130, 150, 50);
+  loop = new Rectangle(width - 210, 190, 150, 50);
+  dooSabin = new Rectangle(width - 210, 250, 150, 50);
+
   curveType = new RadioButtons(new String[] {"Bezier", "Cubic BSpline"}, 
     width - 210, 100, 20, 10);
   uvResolution = new TextInput(width - 210, 180, 200, 30);
@@ -46,10 +51,17 @@ void start() {
   removeRow = new Rectangle(width - 210, 400, 80, 40);
   removeCol = new Rectangle(width - 120, 400, 80, 40);
   goButton = new Rectangle(width - 170, 450, 100, 50);
-
-  currentCurveArgs = new double[]{numApproxPoints, 100};
+  loadCube = new Rectangle(width - 210, 180, 100, 30);  
+  loadCone = new Rectangle(width - 105, 180, 100, 30);
+  loadSphere = new Rectangle(width - 210, 220, 100, 30);
+  loadTetrahedron = new Rectangle(width - 105, 220, 100, 30);
+  loadLastSurface = new Rectangle(width - 210, 260, 100, 30);
+  currentCurveArgs = new double[]{numApproxPoints, 4};
   populatePoints(4, 4);
-  populateCurves();
+  if (curveType.selectedIndex == 0)
+    populateCurvesBezier();
+  else if (curveType.selectedIndex == 1)
+    populateCurvesBSpline();
   approximateCurves();
 }
 
@@ -69,55 +81,88 @@ void mousePressed() {
   holding = true;
   if (mesh != null) {
     CheckReset();
+    if (catmullClark.contains(mouseX, mouseY)) {
+      mesh = catmullClark(mesh);
+    } else if (dooSabin.contains(mouseX, mouseY)) {
+      mesh = dooSabin(mesh);
+    } else if (loop.contains(mouseX, mouseY)) {
+      mesh = loop(mesh);
+    }
   } else {
     operations.mousePressed();  
-    curveType.mousePressed();
-    uvResolution.mousePressed();
-    close1.mousePressed();
-    close2.mousePressed();
-    if (addCol.contains(mouseX, mouseY)) {
-      AddCol();
-    }
-    if (addRow.contains(mouseX, mouseY)) {
-      AddRow();
-    }
-    if (removeRow.contains(mouseX, mouseY)) {
-      RemoveRow();
-    }
-    if (removeCol.contains(mouseX, mouseY)) {
-      RemoveCol();
-    }   
-    CheckPointsClicked();
-    CheckGo();
     if (operations.selectedIndex == 0) {
+      int lastCurveSelected = curveType.selectedIndex;
+      curveType.mousePressed();
+      if (curveType.selectedIndex != lastCurveSelected) {
+        populateCurvesBSpline();
+        approximateCurves();
+      }
+      uvResolution.mousePressed();
+      close1.mousePressed();
+      close2.mousePressed();
+      if (addCol.contains(mouseX, mouseY)) {
+        AddCol();
+      }
+      if (addRow.contains(mouseX, mouseY)) {
+        AddRow();
+      }
+      if (removeRow.contains(mouseX, mouseY)) {
+        RemoveRow();
+      }
+      if (removeCol.contains(mouseX, mouseY)) {
+        RemoveCol();
+      }   
+      CheckPointsClicked();
+      CheckGo();
     } else if (operations.selectedIndex == 1) {
-    } else if (operations.selectedIndex == 2) {
+      if (loadCube.contains(mouseX, mouseY)) {
+        mesh = createFromFile(sketchPath("") + "cube.off", 100);
+      }
+      if (loadCone.contains(mouseX, mouseY)) {
+        mesh = createFromFile(sketchPath("") + "cone.off", 100);
+      }
+      if (loadLastSurface.contains(mouseX, mouseY)) {
+        mesh = createFromFile(sketchPath("") + "mesh.off", 1);
+      }
+      if (loadSphere.contains(mouseX, mouseY)) {
+        mesh = createFromFile(sketchPath("") + "sphere2.off", 100);
+      }
+      if (loadTetrahedron.contains(mouseX, mouseY)) {
+        mesh = createFromFile(sketchPath("") + "tetrahedron.off", 100);
+      }
     }
   }
 }
 void mouseDragged() {
-  boolean changed = false;
-  for (int i = 0; i < points.size(); i++) {
-    for (int j = 0; j < points.get(i).size(); j++) {
-      PVector oldv = points.get(i).get(j).v;
-      points.get(i).get(j).mouseDragged();
-      if (oldv != points.get(i).get(j).v) changed = true;
+  if (operations.selectedIndex == 0) {
+    boolean changed = false;
+    for (int i = 0; i < points.size(); i++) {
+      for (int j = 0; j < points.get(i).size(); j++) {
+        PVector oldv = points.get(i).get(j).v;
+        points.get(i).get(j).mouseDragged();
+        if (oldv != points.get(i).get(j).v) changed = true;
+      }
     }
-  }
 
-  if (changed) {
-    populateCurves();
-    approximateCurves();
+    if (changed) {
+      if (curveType.selectedIndex == 0)
+        populateCurvesBezier();
+      else if (curveType.selectedIndex == 1)
+        populateCurvesBSpline();
+      approximateCurves();
+    }
   }
 }
 
 void mouseReleased() {
-  holding = false;
-  adjustingPoint = false;
-  cam.setActive(true);
-  for (int i = 0; i < points.size(); i++) {
-    for (int j = 0; j < points.get(i).size(); j++) {
-      points.get(i).get(j).mouseReleased();
+  if (operations.selectedIndex == 0) {
+    holding = false;
+    adjustingPoint = false;
+    cam.setActive(true);
+    for (int i = 0; i < points.size(); i++) {
+      for (int j = 0; j < points.get(i).size(); j++) {
+        points.get(i).get(j).mouseReleased();
+      }
     }
   }
 }
@@ -137,7 +182,7 @@ void draw() {
     //stroke(255);
     noStroke();
     mesh.draw();
-  } else {
+  } else if (operations.selectedIndex == 0) {
     for (int i = 0; i < points.size(); i++) {
       for (int j = 0; j < points.get(i).size(); j++) {
         noStroke();
@@ -149,9 +194,7 @@ void draw() {
       }
     }
 
-
     stroke(130, 170, 0);
-    //p.draw();
     for (int i = 0; i < curves.size(); i++) {
       curves.get(i).draw();
     }
@@ -163,6 +206,7 @@ void draw() {
     operations.draw();
     if (operations.selectedIndex == 0) {
       curveType.draw();
+      fill(255);
       uvResolution.draw();
       fill(255);
       stroke(0);
@@ -187,14 +231,39 @@ void draw() {
       textSize(36);
       text("Go", width - 150, 490);
     } else if (operations.selectedIndex == 1) {
+      fill(255);
+      stroke(0);
+      loadCube.draw();
+      loadCone.draw();
+      loadSphere.draw();
+      loadTetrahedron.draw();
+      loadLastSurface.draw();
+
+      textSize(22);
+      fill(0);
+      text("Cube", width - 190, 205);
+      text("Cone", width - 80, 205);
+      text("Sphere", width - 190, 245);
+      text("Tetrahedron", width - 104, 245);
+      text("Surface", width - 205, 285);
     }
   } else {
     fill(255);
     stroke(0);
     reset.draw();
+    catmullClark.draw();
+    loop.draw();
+    dooSabin.draw();
     fill(0);
     textSize(28);
     text("Reset", width - 100, 45);
+    textSize(20);
+    text("Catmull-", width - 180, 155);
+    text("Clark", width - 170, 175);
+    textSize(36);
+    text("Loop", width - 175, 230);
+    textSize(30);
+    text("DooSabin", width - 204, 290);
   }
   cam.endHUD();
 }
@@ -210,28 +279,17 @@ void CheckPointsClicked() {
 
 void CheckGo() {
   if (goButton.contains(mouseX, mouseY)) {
+    if (curveType.selectedIndex == 0)
+      mesh = BezierSurface(toVertices(points), Integer.parseInt(uvResolution.text));
+    else if (curveType.selectedIndex == 1)
+      mesh = BSplineSurface(toVertices(points), Integer.parseInt(uvResolution.text), (int)currentCurveArgs[1]);
 
-    if (operations.selectedIndex == 0) {
-      //mesh = BezierSurface(toVertices(points), Integer.parseInt(uvResolution.text));
-            mesh = createFromFile(sketchPath("") + "cone.off", 100);
-
-      mesh.GenerateASCIIFile();
-    } else if (operations.selectedIndex == 1) {
-      mesh = createFromFile(sketchPath("") + "dragon.off", 100);
-    } else if (operations.selectedIndex == 2) {
-    }
+    mesh.GenerateASCIIFile();
   }
 }
 void CheckReset() {
-  
   if (reset.contains(mouseX, mouseY)) {
-    mesh = dooSabin(mesh);
-    mesh.GenerateASCIIFile();
-    /*
-    cam.reset();
-    cam.setActive(false);
     mesh = null;
-    */
   }
 }
 void keyPressed() {
@@ -239,16 +297,13 @@ void keyPressed() {
     adjustingPoint = true;
     cam.setActive(false);
   }
-  if (mesh == null) {
+  if (mesh == null && operations.selectedIndex == 0) {
     for (int i = 0; i < points.size(); i++) {
       for (int j = 0; j < points.get(i).size(); j++) {
         points.get(i).get(j).keyPressed();
       }
     }
     uvResolution.keyPressed();
-    if (operations.selectedIndex == 0) {
-    } else if (operations.selectedIndex == 1) {
-    }
   }
 }
 ArrayList<Vertex> toVertex(ArrayList<MoveablePoint> p) {
@@ -277,7 +332,7 @@ void populatePoints(int w, int h) {
     }
   }
 }
-void populateCurves() {
+void populateCurvesBezier() {
   curves = new ArrayList<Curve>();
   for (int i = 0; i < points.size(); i++) {
     Curve c = new BezierCurve();
@@ -288,6 +343,23 @@ void populateCurves() {
   }
   for (int i = 0; i < points.get(0).size(); i++) {
     Curve c = new BezierCurve();
+    for (int j = 0; j < points.size(); j++) {
+      c.controlPoints.add(points.get(j).get(i).v);
+    }
+    curves.add(c);
+  }
+}
+void populateCurvesBSpline() {
+  curves = new ArrayList<Curve>();
+  for (int i = 0; i < points.size(); i++) {
+    Curve c = new BSpline();
+    for (int j = 0; j < points.get(i).size(); j++) {
+      c.controlPoints.add(points.get(i).get(j).v);
+    }
+    curves.add(c);
+  }
+  for (int i = 0; i < points.get(0).size(); i++) {
+    Curve c = new BSpline();
     for (int j = 0; j < points.size(); j++) {
       c.controlPoints.add(points.get(j).get(i).v);
     }
@@ -308,7 +380,10 @@ void AddRow() {
   for (int i = 0; i < points.size(); i++) {
     points.get(i).add(new MoveablePoint(i * pointDistance, 0, points.get(i).size() * -pointDistance));
   }
-  populateCurves();
+  if (curveType.selectedIndex == 0)
+    populateCurvesBezier();
+  else if (curveType.selectedIndex == 1)
+    populateCurvesBSpline();
   approximateCurves();
 }
 void RemoveRow() {
@@ -316,7 +391,10 @@ void RemoveRow() {
   for (int i = 0; i < points.size(); i++) {
     points.get(i).remove(points.get(i).size() - 1);
   }
-  populateCurves();
+  if (curveType.selectedIndex == 0)
+    populateCurvesBezier();
+  else if (curveType.selectedIndex == 1)
+    populateCurvesBSpline();
   approximateCurves();
 }
 void AddCol() {
@@ -324,12 +402,18 @@ void AddCol() {
   for (int i = 0; i < points.get(0).size(); i++) {
     points.get(points.size() - 1).add(new MoveablePoint((points.size() - 1) * pointDistance, 0, i * -pointDistance));
   }
-  populateCurves();
+  if (curveType.selectedIndex == 0)
+    populateCurvesBezier();
+  else if (curveType.selectedIndex == 1)
+    populateCurvesBSpline();
   approximateCurves();
 }
 void RemoveCol() {
   if (points.size() <= 4) return;
   points.remove(points.size() - 1);
-  populateCurves();
+  if (curveType.selectedIndex == 0)
+    populateCurvesBezier();
+  else if (curveType.selectedIndex == 1)
+    populateCurvesBSpline();
   approximateCurves();
 }

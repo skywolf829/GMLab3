@@ -1,6 +1,4 @@
 public class Mesh {
-  public int x, y, z;
-  public int eulerX, eulerY, eulerZ;
 
   public ArrayList<Face> faces = new ArrayList<Face>();
   public ArrayList<Vertex> vertices = new ArrayList<Vertex>();
@@ -8,58 +6,74 @@ public class Mesh {
   public ArrayList<ArrayList<Integer>> ASCIIfaces = new ArrayList<ArrayList<Integer>>();
   public int faceColor = color(0, 0, 255);
 
-
-
   public Mesh(ArrayList<Vertex> vertices, ArrayList<ArrayList<Integer>> ASCIIfaces) {
     this.vertices = vertices;
     this.ASCIIfaces = ASCIIfaces;
+    for (int i = 0; i < vertices.size(); i++) {
+      vertices.get(i).adjacentFaces = new ArrayList<Face>();
+      vertices.get(i).connectedEdges = new ArrayList<Edge>();
+    }
     for (int i = 0; i < ASCIIfaces.size(); i++) {
       Face f = new Face();
-      ArrayList<Vertex> facePoints = new ArrayList<Vertex>();
-      ArrayList<Edge> faceEdges = new ArrayList<Edge>();
-      for (int j = 0; j < ASCIIfaces.get(i).size()-1; j++) {
-        facePoints.add(vertices.get(ASCIIfaces.get(i).get(j)));
-        Edge e = new Edge(vertices.get(ASCIIfaces.get(i).get(j)), 
-          vertices.get(ASCIIfaces.get(i).get(j+1)), false);
+      for (int j = 0; j < ASCIIfaces.get(i).size(); j++) {
+        int first = j;
+        int second = (j + 1) % (ASCIIfaces.get(i).size());      
+        this.vertices.get(ASCIIfaces.get(i).get(first)).adjacentFaces.add(f);
+        Edge e = new Edge(vertices.get(ASCIIfaces.get(i).get(first)), 
+          vertices.get(ASCIIfaces.get(i).get(second)), false);
         for (int k = 0; k < edges.size(); k++) {
           if (edges.get(k).equals(e)) {
             e = edges.get(k);
           }
         }
+
+        f.vertices.add(this.vertices.get(ASCIIfaces.get(i).get(first)));        
+        f.edges.add(e);
         e.incidentFaces.add(f);
-        faceEdges.add(e);
         if (!edges.contains(e))
           edges.add(e);
-        if (!vertices.get(ASCIIfaces.get(i).get(j)).connectedEdges.contains(e)) {
-          vertices.get(ASCIIfaces.get(i).get(j)).connectedEdges.add(e);
+        if (!this.vertices.get(this.ASCIIfaces.get(i).get(first)).connectedEdges.contains(e)) {
+          this.vertices.get(this.ASCIIfaces.get(i).get(first)).connectedEdges.add(e);
         }
-        if (!vertices.get(ASCIIfaces.get(i).get(j+1)).connectedEdges.contains(e)) {
-          vertices.get(ASCIIfaces.get(i).get(j+1)).connectedEdges.add(e);
-        }
-      }
-      Vertex v = vertices.get(ASCIIfaces.get(i).get(ASCIIfaces.get(i).size() - 1));
-      facePoints.add(v);      
-      Edge e = new Edge(v, vertices.get(ASCIIfaces.get(i).get(0)), false);
-      for (int k = 0; k < edges.size(); k++) {
-        if (edges.get(k).equals(e)) {
-          e = edges.get(k);
+        if (!this.vertices.get(this.ASCIIfaces.get(i).get(second)).connectedEdges.contains(e)) {
+          this.vertices.get(this.ASCIIfaces.get(i).get(second)).connectedEdges.add(e);
         }
       }
-      e.incidentFaces.add(f);
-      if (!edges.contains(e))
-        edges.add(e);
-      faceEdges.add(e);
-      if (!v.connectedEdges.contains(e)) {
-        v.connectedEdges.add(e);
-      }
-      if (!vertices.get(ASCIIfaces.get(i).get(0)).connectedEdges.contains(e)) {
-        vertices.get(ASCIIfaces.get(i).get(0)).connectedEdges.add(e);
-      }
-      f.vertices = facePoints;
-      f.edges = faceEdges;
       faces.add(f);
     }
-   
+    /*
+    println();
+     println(vertices.size() + " " + faces.size() + " " + edges.size());
+     ArrayList<Edge> uniqueEdges = new ArrayList<Edge>();
+     
+     for (int i = 0; i < faces.size(); i++) {
+     for (int j = 0; j < faces.get(i).vertices.size(); j++) {
+     println(faces.get(i).vertices.get(j).connectedEdges.size());
+     for (int k = 0; k < faces.get(i).vertices.get(j).connectedEdges.size(); k++) {
+     if (!uniqueEdges.contains(faces.get(i).vertices.get(j).connectedEdges.get(k))) {
+     uniqueEdges.add(faces.get(i).edges.get(j));
+     }
+     }
+     }
+     }
+     */
+
+    /*
+    ArrayList<Edge> uniqueEdges = new ArrayList<Edge>();
+     
+     //println(uniqueEdges.size());
+     //println();
+     uniqueEdges = new ArrayList<Edge>();
+     for (int i = 0; i < this.vertices.size(); i++) {
+     println(this.vertices.get(i).connectedEdges.size());
+     for (int j = 0; j < this.vertices.get(i).connectedEdges.size(); j++) {
+     if (!uniqueEdges.contains(this.vertices.get(i).connectedEdges.get(j))) {
+     uniqueEdges.add(this.vertices.get(i).connectedEdges.get(j));
+     }
+     }
+     }
+     println(uniqueEdges.size());
+     */
   }
   public void GenerateASCIIFile() {
     PrintWriter f = createWriter("Mesh.off");
@@ -106,6 +120,193 @@ public class Mesh {
   }
 }
 
+
+Mesh catmullClark(Mesh m) {
+  ArrayList<Vertex> newVertices = new ArrayList<Vertex>();
+  ArrayList<Face> newFaces = new ArrayList<Face>();
+  ArrayList<ArrayList<Integer>> ASCIIFaces = new ArrayList<ArrayList<Integer>>();
+
+  HashMap<Face, Vertex> faceToNewVertex = new HashMap<Face, Vertex>();
+  HashMap<Edge, Vertex> edgeToNewVertex = new HashMap<Edge, Vertex>();
+  HashMap<Vertex, Vertex> vertexToNewVertex = new HashMap<Vertex, Vertex>();
+
+  //println("Face vertices");
+  for (int i = 0; i < m.faces.size(); i++) {
+    Vertex v = new Vertex();    
+    for (int j = 0; j < m.faces.get(i).vertices.size(); j++) {
+      v.position.add(m.faces.get(i).vertices.get(j).position);
+    }
+    v.position.mult(1.0 / m.faces.get(i).vertices.size());
+    newVertices.add(v);
+    faceToNewVertex.put(m.faces.get(i), v);
+  }
+  //println("Edge vertices");
+  for (int i = 0; i < m.edges.size(); i++) {
+    Vertex v = new Vertex();
+    v.position.add(m.edges.get(i).p1.position);
+    v.position.add(m.edges.get(i).p2.position);
+    for (int j = 0; j < m.edges.get(i).incidentFaces.size(); j++) {
+      v.position.add(faceToNewVertex.get(m.edges.get(i).incidentFaces.get(j)).position);
+    }
+    v.position.mult(1.0 / (2 + m.edges.get(i).incidentFaces.size()));
+    edgeToNewVertex.put(m.edges.get(i), v);
+    newVertices.add(v);
+  }
+  //println("Vertex vertices");
+  for (int i = 0; i < m.vertices.size(); i++) {
+    Vertex v = new Vertex();
+    if (m.vertices.get(i).connectedEdges.size() == 2) {
+      v.position.add(PVector.mult(m.vertices.get(i).position, 6.0 / 8));
+      v.position.add(PVector.mult(m.vertices.get(i).connectedEdges.get(0).other(m.vertices.get(i)).position, 1.0 / 8));
+      v.position.add(PVector.mult(m.vertices.get(i).connectedEdges.get(1).other(m.vertices.get(i)).position, 1.0 / 8));
+    } else if (m.vertices.get(i).adjacentFaces.size() == 2) {
+      for (int j = 0; j < m.vertices.get(i).connectedEdges.size(); j++) {
+        if (!(m.vertices.get(i).connectedEdges.get(j).
+          incidentFaces.contains(m.vertices.get(i).adjacentFaces.get(0)) && 
+          m.vertices.get(i).connectedEdges.get(j).
+          incidentFaces.contains(m.vertices.get(i).adjacentFaces.get(1)))) {
+          v.position.add(edgeToNewVertex.get(m.vertices.get(i).connectedEdges.get(j)).position);
+        }
+      }
+      v.position.mult(0.5);
+    } else {        
+      PVector Q = new PVector(), R = new PVector();
+      for (int j = 0; j < m.vertices.get(i).connectedEdges.size(); j++) {
+        R.add(m.vertices.get(i).connectedEdges.get(j).center());
+      }
+      //println(m.vertices.get(i).adjacentFaces.size());
+      for (int j = 0; j < m.vertices.get(i).adjacentFaces.size(); j++) {
+        //println(faceToNewVertex.containsKey(m.vertices.get(i).adjacentFaces.get(j)));
+        Q.add(faceToNewVertex.get(m.vertices.get(i).adjacentFaces.get(j)).position);
+      }
+      //println(faceCount);
+      Q.mult(1.0 / m.vertices.get(i).adjacentFaces.size());
+      R.mult(2.0 / m.vertices.get(i).connectedEdges.size());
+
+      v.position.add(Q);
+      v.position.add(R);
+      v.position.add(PVector.mult(m.vertices.get(i).position, 
+        (m.vertices.get(i).connectedEdges.size() - 3)));
+      v.position.mult(1.0 / m.vertices.get(i).connectedEdges.size());
+    }
+    vertexToNewVertex.put(m.vertices.get(i), v);
+    newVertices.add(v);
+  }
+
+  /*
+  for (int i = 0; i < m.faces.size(); i++) {
+   for (int j = 0; j < m.faces.get(i).edges.size(); j++) {
+   if (m.edges.get(j).incidentFaces.contains(m.faces.get(i))) {
+   Edge e = new Edge(faceToNewVertex.get(m.faces.get(i)), edgeToNewVertex.get(m.faces.get(i).edges.get(j)), false);
+   faceToNewVertex.get(m.faces.get(i)).connectedEdges.add(e);
+   edgeToNewVertex.get(m.faces.get(i).edges.get(j)).connectedEdges.add(e);
+   newEdges.add(e);
+   }
+   }
+   }
+   
+   for (int i = 0; i < m.vertices.size(); i++) {
+   for (int j = 0; j < m.vertices.get(i).connectedEdges.size(); j++) {
+   Edge e = new Edge(vertexToNewVertex.get(m.vertices.get(i)), 
+   edgeToNewVertex.get(m.vertices.get(i).connectedEdges.get(j)), false);
+   vertexToNewVertex.get(m.vertices.get(i)).connectedEdges.add(e);
+   edgeToNewVertex.get(m.vertices.get(i).connectedEdges.get(j)).connectedEdges.add(e);
+   newEdges.add(e);
+   }
+   }
+   */
+  for (int i = 0; i < m.faces.size(); i++) {
+    for (int j = 0; j < m.faces.get(i).vertices.size(); j++) {
+      Face f = new Face();
+      f.vertices.add(faceToNewVertex.get(m.faces.get(i)));
+      f.vertices.add(vertexToNewVertex.get(m.faces.get(i).vertices.get(j)));
+      for (int k = 0; k < m.faces.get(i).vertices.get(j).connectedEdges.size(); k++) {
+        if (m.faces.get(i).edges.contains(m.faces.get(i).vertices.get(j).connectedEdges.get(k))) {
+
+          f.vertices.add(edgeToNewVertex.get(m.faces.get(i).vertices.get(j).connectedEdges.get(k)));
+
+          Edge faceToEdge = new Edge(faceToNewVertex.get(m.faces.get(i)), 
+            edgeToNewVertex.get(m.faces.get(i).vertices.get(j).connectedEdges.get(k)), false);
+          Edge edgeToVertex = new Edge(vertexToNewVertex.get(m.faces.get(i).vertices.get(j)), 
+            edgeToNewVertex.get(m.faces.get(i).vertices.get(j).connectedEdges.get(k)), false);
+          edgeToNewVertex.get(m.faces.get(i).vertices.get(j).connectedEdges.get(k)).connectedEdges.add(faceToEdge);
+          edgeToNewVertex.get(m.faces.get(i).vertices.get(j).connectedEdges.get(k)).connectedEdges.add(edgeToVertex);
+          faceToNewVertex.get(m.faces.get(i)).connectedEdges.add(edgeToVertex);
+          vertexToNewVertex.get(m.faces.get(i).vertices.get(j)).connectedEdges.add(edgeToVertex);
+
+          f.edges.add(faceToEdge);
+          f.edges.add(edgeToVertex);
+        }
+      }
+      newFaces.add(f);
+    }
+  }
+  for (int i = 0; i < newFaces.size(); i++) {
+    ArrayList<Integer> asciiface = new ArrayList<Integer>();
+    Face f = newFaces.get(i);   
+    Edge e = f.edges.get(0);
+    if (f.vertices.size() != f.edges.size()) continue;
+    asciiface.add(newVertices.indexOf(e.p1));
+    asciiface.add(newVertices.indexOf(e.p2));
+    Vertex nextV, last = e.p1, current = e.p2;
+    //println(i + " " +f.vertices.size() + " " + f.edges.size());
+    while (!(nextV = f.getNextPoint(last, current)).equals(e.p1)) {
+      last = current;
+      current = nextV;
+      asciiface.add(newVertices.indexOf(nextV));
+    }
+    ASCIIFaces.add(asciiface);
+  }
+  return new Mesh(newVertices, ASCIIFaces);
+}
+Mesh loop(Mesh m) {
+  ArrayList<Vertex> newVertices = new ArrayList<Vertex>();
+  ArrayList<ArrayList<Integer>> ASCIIFaces = new ArrayList<ArrayList<Integer>>();
+  ArrayList<Face> newFaces = new ArrayList<Face>();
+  HashMap<Vertex, Vertex> vertsToNewVerts = new HashMap<Vertex, Vertex>();
+  HashMap<Edge, Vertex> edgeToNewVerts = new HashMap<Edge, Vertex>();
+  float alpha = 5.0 / 8.0;
+  
+  for (int i = 0; i < m.vertices.size(); i++) {
+    Vertex v = new Vertex();
+    for(int j = 0; j < m.vertices.get(i).connectedEdges.size(); j++){
+      v.position.add(m.vertices.get(i).connectedEdges.get(j).other(m.vertices.get(i)).position);
+    }
+    v.position.mult(1.0 / m.vertices.get(i).connectedEdges.size());
+    v.position.mult(1 - alpha);
+    v.position.add(PVector.mult(m.vertices.get(i).position, alpha));
+    newVertices.add(v);
+    vertsToNewVerts.put(m.vertices.get(i), v);
+  }
+  for (int i = 0; i < m.edges.size(); i++) {
+    Vertex v = new Vertex();
+    int denom = 2;
+    v.position.add(PVector.mult(m.edges.get(i).center(), 2));
+    for(int j = 0; j < m.edges.get(i).incidentFaces.size(); j++){
+      v.position.add(PVector.mult(m.edges.get(i).incidentFaces.get(j).centroid(), 3));
+      denom += 3;
+    }
+    v.position.mult(1.0 / denom);
+    edgeToNewVerts.put(m.edges.get(i), v);
+    newVertices.add(v);
+  }
+  for (int i = 0; i < m.faces.size(); i++) {
+    for (int j = 0; j < m.faces.get(i).vertices.size(); j++) {
+      ArrayList<Integer> asciiface = new ArrayList<Integer>();
+      ArrayList<Edge> theEdges = m.faces.get(i).edgesIncidentOn(m.faces.get(i).vertices.get(j));
+      asciiface.add(newVertices.indexOf(vertsToNewVerts.get(m.faces.get(i).vertices.get(j))));
+      asciiface.add(newVertices.indexOf(edgeToNewVerts.get(theEdges.get(0))));
+      asciiface.add(newVertices.indexOf(edgeToNewVerts.get(theEdges.get(1))));    
+      ASCIIFaces.add(asciiface);
+    }
+    ArrayList<Integer> asciiface = new ArrayList<Integer>();
+    asciiface.add(newVertices.indexOf(edgeToNewVerts.get(m.faces.get(i).edges.get(0))));
+    asciiface.add(newVertices.indexOf(edgeToNewVerts.get(m.faces.get(i).edges.get(1))));
+    asciiface.add(newVertices.indexOf(edgeToNewVerts.get(m.faces.get(i).edges.get(2))));
+    ASCIIFaces.add(asciiface);
+  }
+  return new Mesh(newVertices, ASCIIFaces);
+}
 Mesh dooSabin(Mesh m) {
   HashMap<Vertex, ArrayList<Vertex>> vertsToNewVerts = new HashMap<Vertex, ArrayList<Vertex>>();
   HashMap<Edge, ArrayList<Vertex>> edgesToNewVerts = new HashMap<Edge, ArrayList<Vertex>>();
@@ -237,7 +438,7 @@ Mesh dooSabin(Mesh m) {
     ArrayList<Integer> asciiface = new ArrayList<Integer>();
     Face f = newFaces.get(i);    
     Edge e = f.edges.get(0);
-    if(f.vertices.size() != f.edges.size()) continue;
+    if (f.vertices.size() != f.edges.size()) continue;
     asciiface.add(newVertices.indexOf(e.p1));
     asciiface.add(newVertices.indexOf(e.p2));
     Vertex nextV, last = e.p1, current = e.p2;
