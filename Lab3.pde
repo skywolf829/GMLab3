@@ -98,18 +98,36 @@ void mousePressed() {
         approximateCurves();
       }
       uvResolution.mousePressed();
+      boolean beforeClose1 = close1.checked;
+      boolean beforeClose2 = close2.checked;
       close1.mousePressed();
       close2.mousePressed();
+      if(close1.checked && close2.checked) close2.checked = false;
+      if(beforeClose1 != close1.checked || beforeClose2 != close2.checked){
+        if(curveType.selectedIndex == 0)
+          populateCurvesBezier();
+        else if(curveType.selectedIndex == 1)
+          populateCurvesBSpline();
+        approximateCurves();
+      }
       if (addCol.contains(mouseX, mouseY)) {
+        close1.checked = false;
+        close2.checked = false;
         AddCol();
       }
       if (addRow.contains(mouseX, mouseY)) {
+        close1.checked = false;
+        close2.checked = false;
         AddRow();
       }
       if (removeRow.contains(mouseX, mouseY)) {
+        close1.checked = false;
+        close2.checked = false;
         RemoveRow();
       }
       if (removeCol.contains(mouseX, mouseY)) {
+        close1.checked = false;
+        close2.checked = false;
         RemoveCol();
       }   
       CheckPointsClicked();
@@ -280,9 +298,11 @@ void CheckPointsClicked() {
 void CheckGo() {
   if (goButton.contains(mouseX, mouseY)) {
     if (curveType.selectedIndex == 0)
-      mesh = BezierSurface(toVertices(points), Integer.parseInt(uvResolution.text));
+      mesh = BezierSurface(toVertices(points), Integer.parseInt(uvResolution.text), 
+        close1.checked, close2.checked);
     else if (curveType.selectedIndex == 1)
-      mesh = BSplineSurface(toVertices(points), Integer.parseInt(uvResolution.text), (int)currentCurveArgs[1]);
+      mesh = BSplineSurface(toVertices(points), Integer.parseInt(uvResolution.text), (int)currentCurveArgs[1], 
+        close1.checked, close2.checked);
 
     mesh.GenerateASCIIFile();
   }
@@ -339,6 +359,7 @@ void populateCurvesBezier() {
     for (int j = 0; j < points.get(i).size(); j++) {
       c.controlPoints.add(points.get(i).get(j).v);
     }
+    c.closed = close1.checked;
     curves.add(c);
   }
   for (int i = 0; i < points.get(0).size(); i++) {
@@ -346,6 +367,7 @@ void populateCurvesBezier() {
     for (int j = 0; j < points.size(); j++) {
       c.controlPoints.add(points.get(j).get(i).v);
     }
+    c.closed = close2.checked;
     curves.add(c);
   }
 }
@@ -356,6 +378,7 @@ void populateCurvesBSpline() {
     for (int j = 0; j < points.get(i).size(); j++) {
       c.controlPoints.add(points.get(i).get(j).v);
     }
+    c.closed = close1.checked;
     curves.add(c);
   }
   for (int i = 0; i < points.get(0).size(); i++) {
@@ -363,6 +386,7 @@ void populateCurvesBSpline() {
     for (int j = 0; j < points.size(); j++) {
       c.controlPoints.add(points.get(j).get(i).v);
     }
+    c.closed = close2.checked;
     curves.add(c);
   }
 }

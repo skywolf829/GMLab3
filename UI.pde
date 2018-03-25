@@ -326,10 +326,13 @@ public class CheckBox {
     }
   }
   void draw() {
+    fill(255);
     r.draw();
     textSize(w+5);
+    fill(0);
     if (checked) {
       text("X", x+2, y + w);
     }
+    fill(255);
   }
 }

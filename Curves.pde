@@ -41,8 +41,8 @@ class BezierCurve extends Curve {
     if (controlPoints.size() > 2) {
       PVector first = controlPoints.get(0);
       PVector second = controlPoints.get(1);
-      controlPoints.add(new PVector(lerp(first.x, second.x, -1.5), 
-        lerp(first.y, second.y, -1.5), lerp(first.z, second.z, -1.5)));
+      controlPoints.add(new PVector(lerp(first.x, second.x, -1.25), 
+        lerp(first.y, second.y, -1.25), lerp(first.z, second.z, -1.25)));
       controlPoints.add(first);
     }
   }
@@ -97,10 +97,17 @@ class BSpline extends Curve {
     controlPoints = new ArrayList<PVector>();
     approximatePoints = new ArrayList<PVector>();
   }
+  void closeCurve() {
+    PVector first = controlPoints.get(0);
+    PVector second = controlPoints.get(1);
+    controlPoints.add(new PVector(lerp(first.x, second.x, -1.25), 
+      lerp(first.y, second.y, -1.25), lerp(first.z, second.z, -1.25)));
+    controlPoints.add(first);
+  }
   public void approximateCurve(double[] args) {
     D = (int)args[1];
     approximatePoints = new ArrayList<PVector>();
-
+    if (closed) closeCurve();
     for (float i = 0.0; i <= controlPoints.size() - D + 1; i += (controlPoints.size() - D + 1) / args[0]) {
       approximatePoints.add(SolveAt(i, D));
     }
@@ -149,10 +156,30 @@ class BSpline extends Curve {
     }
   }
 }
-public Mesh BezierSurface(ArrayList<ArrayList<Vertex>> points, int resolution) {
+public Mesh BezierSurface(ArrayList<ArrayList<Vertex>> points, int resolution, boolean close1, boolean close2) {
   ArrayList<Vertex> vertices = new ArrayList<Vertex>();
   ArrayList<ArrayList<Integer>> ASCIIfaces = new ArrayList<ArrayList<Integer>>();
-
+  if (close1) {
+    for (int i = 0; i < points.size(); i++) {
+      Vertex first = points.get(i).get(0);
+      Vertex second = points.get(i).get(1);
+      points.get(i).add(new Vertex(lerp(first.position.x, second.position.x, -1.25), 
+        lerp(first.position.y, second.position.y, -1.25), 
+        lerp(first.position.z, second.position.z, -1.25)));
+      points.get(i).add(first);
+    }
+  } else if (close2) {
+    ArrayList<Vertex> firsts = new ArrayList<Vertex>();
+    ArrayList<Vertex> toAdd = new ArrayList<Vertex>();
+    for (int j = 0; j < points.get(0).size(); j++) {
+      firsts.add(points.get(0).get(j).clone()); 
+      toAdd.add(new Vertex(lerp(points.get(0).get(j).position.x, points.get(2).get(j).position.x, -1.25), 
+        lerp(points.get(0).get(j).position.y, points.get(2).get(j).position.y, -1.25), 
+        lerp(points.get(0).get(j).position.z, points.get(2).get(j).position.z, -1.25)));
+    }
+    points.add(toAdd);
+    points.add(firsts);
+  }
   for (float i = 0; i <= resolution; i++) {
     for (float j = 0; j <= resolution; j++) {
       PVector v = new PVector();
@@ -207,7 +234,7 @@ public static double bsplineBasisFunction(int i, int d, double u, int controlPoi
       leftSide = 0;
     } else {
       leftSide = ((u - getT(i, controlPointSize, D)) * 
-      bsplineBasisFunction(i, d-1, u, controlPointSize, D)) /
+        bsplineBasisFunction(i, d-1, u, controlPointSize, D)) /
         (getT(i+d-1, controlPointSize, D) - getT(i, controlPointSize, D));
     }
     if (getT(i+d, controlPointSize, D) == 
@@ -215,7 +242,7 @@ public static double bsplineBasisFunction(int i, int d, double u, int controlPoi
       rightSide = 0;
     } else {
       rightSide = ((getT(i+d, controlPointSize, D) - u) * 
-      bsplineBasisFunction(i+1, d-1, u, controlPointSize, D) /
+        bsplineBasisFunction(i+1, d-1, u, controlPointSize, D) /
         (getT(i+d, controlPointSize, D) - getT(i+1, controlPointSize, D)));
     }
     return leftSide + rightSide;
@@ -223,10 +250,31 @@ public static double bsplineBasisFunction(int i, int d, double u, int controlPoi
 }
 
 
-Mesh BSplineSurface(ArrayList<ArrayList<Vertex>> points, int resolution, int D) {
+Mesh BSplineSurface(ArrayList<ArrayList<Vertex>> points, int resolution, int D, 
+  boolean close1, boolean close2) {
   ArrayList<Vertex> vertices = new ArrayList<Vertex>();
   ArrayList<ArrayList<Integer>> ASCIIfaces = new ArrayList<ArrayList<Integer>>();
-  
+  if (close1) {
+    for (int i = 0; i < points.size(); i++) {
+      Vertex first = points.get(i).get(0);
+      Vertex second = points.get(i).get(1);
+      points.get(i).add(new Vertex(lerp(first.position.x, second.position.x, -1.25), 
+        lerp(first.position.y, second.position.y, -1.25), 
+        lerp(first.position.z, second.position.z, -1.25)));
+      points.get(i).add(first);
+    }
+  } else if (close2) {
+    ArrayList<Vertex> firsts = new ArrayList<Vertex>();
+    ArrayList<Vertex> toAdd = new ArrayList<Vertex>();
+    for (int j = 0; j < points.get(0).size(); j++) {
+      firsts.add(points.get(0).get(j).clone()); 
+      toAdd.add(new Vertex(lerp(points.get(0).get(j).position.x, points.get(2).get(j).position.x, -1.25), 
+        lerp(points.get(0).get(j).position.y, points.get(2).get(j).position.y, -1.25), 
+        lerp(points.get(0).get(j).position.z, points.get(2).get(j).position.z, -1.25)));
+    }
+    points.add(toAdd);
+    points.add(firsts);
+  }
   for (float i = 0; i <= (points.size() - D + 1) * (resolution); i += (points.size() - D + 1)) {
     for (float j = 0; j <= (points.get(0).size() - D + 1) * (resolution); j += (points.get(0).size() - D + 1)) {
       PVector v = new PVector();
