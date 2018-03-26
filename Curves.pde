@@ -173,16 +173,19 @@ public Mesh BezierSurface(ArrayList<ArrayList<Vertex>> points, int resolution, b
     ArrayList<Vertex> toAdd = new ArrayList<Vertex>();
     for (int j = 0; j < points.get(0).size(); j++) {
       firsts.add(points.get(0).get(j).clone()); 
-      toAdd.add(new Vertex(lerp(points.get(0).get(j).position.x, points.get(2).get(j).position.x, -1.25), 
-        lerp(points.get(0).get(j).position.y, points.get(2).get(j).position.y, -1.25), 
-        lerp(points.get(0).get(j).position.z, points.get(2).get(j).position.z, -1.25)));
+      toAdd.add(new Vertex(lerp(points.get(0).get(j).position.x, points.get(1).get(j).position.x, -1.25), 
+        lerp(points.get(0).get(j).position.y, points.get(1).get(j).position.y, -1.25), 
+        lerp(points.get(0).get(j).position.z, points.get(1).get(j).position.z, -1.25)));
     }
     points.add(toAdd);
     points.add(firsts);
   }
-  for (float i = 0; i <= resolution; i++) {
-    for (float j = 0; j <= resolution; j++) {
-      PVector v = new PVector();
+  int iMax = close2 ? resolution - 1 : resolution;
+  int jMax = close1 ? resolution - 1 : resolution;
+
+  for (float i = 0; i <= iMax; i++) {
+    for (float j = 0; j <= jMax; j++) {
+      PVector v = new PVector();      
       for (int k = 0; k < points.size(); k++) {
         for (int l = 0; l < points.get(k).size(); l++) {
           v.add(PVector.mult(points.get(k).get(l).position, 
@@ -193,14 +196,37 @@ public Mesh BezierSurface(ArrayList<ArrayList<Vertex>> points, int resolution, b
       vertices.add(new Vertex(v));
     }
   }
-  for (int i = 0; i < resolution; i++) {
-    for (int j = 0; j < resolution; j++) {    
-      int base = (int)(i * (resolution+1));
+  iMax = close2 ? resolution - 1 : resolution;
+  jMax = close1 ? resolution - 1 : resolution;
+
+  for (int i = 0; i < iMax; i++) {
+    int scalar = close1 ? resolution : resolution + 1;
+    for (int j = 0; j < jMax; j++) {    
+      int base = (int)(i * scalar);
       ArrayList<Integer> temp = new ArrayList<Integer>();
       temp.add(base + j);
       temp.add(base + j + 1);
-      temp.add(base + j + 1 + (int)(resolution+1));
-      temp.add(base + j + (int)(resolution+1));
+      temp.add(base + j + 1 + scalar);
+      temp.add(base + j + scalar);
+      ASCIIfaces.add(temp);
+    }
+  }
+  if (close1) {
+    for (int i = 0; i < resolution; i++) {
+      ArrayList<Integer> temp = new ArrayList<Integer>();
+      temp.add(i * resolution + resolution-1);
+      temp.add((i + 1) * resolution + resolution-1);      
+      temp.add((i+1) * resolution);
+      temp.add(i * resolution);
+      ASCIIfaces.add(temp);
+    }
+  } else if (close2) {
+    for (int i = 0; i < resolution; i++) {
+      ArrayList<Integer> temp = new ArrayList<Integer>();
+      temp.add(vertices.size() -1 - resolution + i);
+      temp.add(i);      
+      temp.add(i + 1);
+      temp.add(vertices.size() -1 - resolution + i + 1);
       ASCIIfaces.add(temp);
     }
   }
@@ -268,9 +294,9 @@ Mesh BSplineSurface(ArrayList<ArrayList<Vertex>> points, int resolution, int D,
     ArrayList<Vertex> toAdd = new ArrayList<Vertex>();
     for (int j = 0; j < points.get(0).size(); j++) {
       firsts.add(points.get(0).get(j).clone()); 
-      toAdd.add(new Vertex(lerp(points.get(0).get(j).position.x, points.get(2).get(j).position.x, -1.25), 
-        lerp(points.get(0).get(j).position.y, points.get(2).get(j).position.y, -1.25), 
-        lerp(points.get(0).get(j).position.z, points.get(2).get(j).position.z, -1.25)));
+      toAdd.add(new Vertex(lerp(points.get(0).get(j).position.x, points.get(1).get(j).position.x, -1.25), 
+        lerp(points.get(0).get(j).position.y, points.get(1).get(j).position.y, -1.25), 
+        lerp(points.get(0).get(j).position.z, points.get(1).get(j).position.z, -1.25)));
     }
     points.add(toAdd);
     points.add(firsts);
@@ -299,5 +325,25 @@ Mesh BSplineSurface(ArrayList<ArrayList<Vertex>> points, int resolution, int D,
       ASCIIfaces.add(temp);
     }
   }
+  if (close1) {
+    for (int i = 0; i < resolution; i++) {
+      ArrayList<Integer> temp = new ArrayList<Integer>();
+      temp.add(i * (resolution + 1) + resolution);
+      temp.add((i + 1) * (resolution + 1) + resolution);      
+      temp.add((i+1) * (resolution + 1));
+      temp.add(i * (resolution + 1));
+      ASCIIfaces.add(temp);
+    }
+  } else if (close2) {
+    for (int i = 0; i < resolution; i++) {
+      ArrayList<Integer> temp = new ArrayList<Integer>();
+      temp.add(vertices.size() - resolution + i - 1);
+      temp.add(i);      
+      temp.add(i + 1);
+      temp.add(vertices.size() - resolution + i + 1 -1);
+      ASCIIfaces.add(temp);
+    }
+  }
+
   return new Mesh(vertices, ASCIIfaces);
 }
